@@ -1,2 +1,3 @@
-# AI-Coding-Mentor
-An AI-powered coding mentor for code analysis, debugging, learning, and personalized programming practice.
+# AI Coding Mentor
+
+An AI-powered coding mentor for learning, debugging, code analysis, and personalized programming practice.

@@ -1,14 +1,10 @@
 from fastapi import APIRouter
-
 from backend.app.models.code import CodeRequest
+from backend.app.services.code_service import analyze_code
 
 router = APIRouter()
 
 
 @router.post("/analyze-code")
-def analyze_code(request: CodeRequest):
-    return {
-        "language": request.language,
-        "code": request.code,
-        "message": "Code received successfully!"
-    }
+def analyze_code_route(request: CodeRequest):
+    return analyze_code(request)

@@ -90,6 +90,61 @@ class TestEvaluator(unittest.TestCase):
 
         self.assertFalse(result["passed"])
         self.assertFalse(result["suggestions_found"])
+        
+        
+    @patch("tests.evaluation.run_evaluation.code_analysis_chain")
+    def test_missing_issues_fails(self, mock_chain):
+        response = CodeAnalysisResponse(
+            summary="No issues were identified.",
+            issues=[],
+            suggestions=["Review the code manually."],
+        )
+        mock_chain.invoke.return_value = response
+
+        result = run_evaluation.evaluate_case(self.case)
+
+        self.assertFalse(result["passed"])
+        self.assertFalse(result["issues_found"])
+
+    @patch("tests.evaluation.run_evaluation.code_analysis_chain")
+    def test_insufficient_keywords_fails(self, mock_chain):
+        response = CodeAnalysisResponse(
+            summary="There may be a problem.",
+            issues=[
+                CodeIssue(
+                    type="Runtime Error",
+                    severity="High",
+                    explanation="Variable x has a problem.",
+                )
+            ],
+            suggestions=["Check the variable."],
+        )
+        mock_chain.invoke.return_value = response
+
+        result = run_evaluation.evaluate_case(self.case)
+
+        self.assertFalse(result["passed"])
+        self.assertFalse(result["keyword_found"])
+
+    @patch("tests.evaluation.run_evaluation.code_analysis_chain")
+    def test_empty_explanation_fails(self, mock_chain):
+        response = CodeAnalysisResponse(
+            summary="An undefined variable was detected.",
+            issues=[
+                CodeIssue(
+                    type="Runtime Error",
+                    severity="High",
+                    explanation="   ",
+                )
+            ],
+            suggestions=["Define x before using it."],
+        )
+        mock_chain.invoke.return_value = response
+
+        result = run_evaluation.evaluate_case(self.case)
+
+        self.assertFalse(result["passed"])
+        self.assertFalse(result["explanation_found"])
 
 
 if __name__ == "__main__":

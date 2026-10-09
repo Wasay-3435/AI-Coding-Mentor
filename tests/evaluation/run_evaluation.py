@@ -1,4 +1,3 @@
-
 from backend.app.chains.code_analysis_chain import code_analysis_chain
 from tests.evaluation.code_analysis_cases import EVALUATION_CASES
 
@@ -21,7 +20,10 @@ def evaluate_case(case):
         "code": case.code,
     })
 
-    # Collect issue categories from the structured issues field.
+    # 1. Check whether the model returned at least one issue.
+    issues_found = len(result.issues) > 0
+
+    # 2. Check whether the expected issue category was returned.
     issue_types = [
         issue.type.strip().lower()
         for issue in result.issues
@@ -29,35 +31,47 @@ def evaluate_case(case):
 
     expected_type = case.expected_issue_type.strip().lower()
 
-    # Check the issue category, not just words in the summary.
     type_found = any(
         expected_type == issue_type
         for issue_type in issue_types
     )
 
-    # Check expected keywords in explanations and suggestions.
-    diagnostic_text = " ".join([
-        issue.explanation for issue in result.issues
-    ] + result.suggestions).lower()
+    # 3. Collect diagnostic explanations and suggestions.
+    diagnostic_text = " ".join(
+        [issue.explanation for issue in result.issues]
+        + result.suggestions
+    ).lower()
 
-    keyword_found = any(
-        keyword.lower() in diagnostic_text
+    # Require at least two expected keywords, or all keywords
+    # if fewer than two were supplied.
+    matched_keywords = [
+        keyword
         for keyword in case.expected_keywords
+        if keyword.lower() in diagnostic_text
+    ]
+
+    required_keyword_count = min(2, len(case.expected_keywords))
+
+    keyword_found = (
+        len(matched_keywords) >= required_keyword_count
     )
 
-    # Verify that the response contains useful text.
+    # 4. Verify that at least one issue has a non-empty explanation.
     explanation_found = any(
         issue.explanation.strip()
         for issue in result.issues
     )
 
+    # 5. Verify that at least one non-empty suggestion exists.
     suggestions_found = any(
         suggestion.strip()
         for suggestion in result.suggestions
     )
 
+    # 6. All required checks must pass.
     passed = (
-        type_found
+        issues_found
+        and type_found
         and keyword_found
         and explanation_found
         and suggestions_found
@@ -66,8 +80,10 @@ def evaluate_case(case):
     return {
         "name": case.name,
         "passed": passed,
+        "issues_found": issues_found,
         "type_found": type_found,
         "keyword_found": keyword_found,
+        "matched_keywords": matched_keywords,
         "explanation_found": explanation_found,
         "suggestions_found": suggestions_found,
         "summary": result.summary,
@@ -107,10 +123,12 @@ def run_evaluation(limit=None):
 
             print(f"Result: {'PASS' if result['passed'] else 'FAIL'}")
             print(f"Summary: {result['summary']}")
+            print(f"Issues present: {result['issues_found']}")
             print(f"Correct issue type: {result['type_found']}")
-            print(f"Expected keyword found: {result['keyword_found']}")
+            print(f"Expected keywords found: {result['keyword_found']}")
+            print(f"Matched keywords: {result['matched_keywords']}")
             print(f"Explanation present: {result['explanation_found']}")
-            print(f"Suggestion present: {result['suggestions_found']}")
+            print(f"Suggestions present: {result['suggestions_found']}")
 
         except Exception as exc:
             if is_infrastructure_error(exc):

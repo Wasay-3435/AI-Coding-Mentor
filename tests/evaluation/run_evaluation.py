@@ -1,3 +1,8 @@
+
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
 from backend.app.chains.code_analysis_chain import code_analysis_chain
 from tests.evaluation.code_analysis_cases import EVALUATION_CASES
 
@@ -20,10 +25,10 @@ def evaluate_case(case):
         "code": case.code,
     })
 
-    # 1. Check whether the model returned at least one issue.
+    # Check whether the model returned any issues.
     issues_found = len(result.issues) > 0
 
-    # 2. Check whether the expected issue category was returned.
+    # Check whether the expected issue category was returned.
     issue_types = [
         issue.type.strip().lower()
         for issue in result.issues
@@ -36,39 +41,40 @@ def evaluate_case(case):
         for issue_type in issue_types
     )
 
-    # 3. Collect diagnostic explanations and suggestions.
+    # Collect explanations and suggestions for keyword matching.
     diagnostic_text = " ".join(
         [issue.explanation for issue in result.issues]
         + result.suggestions
     ).lower()
 
-    # Require at least two expected keywords, or all keywords
-    # if fewer than two were supplied.
     matched_keywords = [
         keyword
         for keyword in case.expected_keywords
         if keyword.lower() in diagnostic_text
     ]
 
-    required_keyword_count = min(2, len(case.expected_keywords))
+    required_keyword_count = min(
+        2,
+        len(case.expected_keywords),
+    )
 
     keyword_found = (
         len(matched_keywords) >= required_keyword_count
     )
 
-    # 4. Verify that at least one issue has a non-empty explanation.
+    # Check that at least one issue has a non-empty explanation.
     explanation_found = any(
         issue.explanation.strip()
         for issue in result.issues
     )
 
-    # 5. Verify that at least one non-empty suggestion exists.
+    # Check that at least one non-empty suggestion exists.
     suggestions_found = any(
         suggestion.strip()
         for suggestion in result.suggestions
     )
 
-    # 6. All required checks must pass.
+    # All required checks must pass.
     passed = (
         issues_found
         and type_found
@@ -101,6 +107,55 @@ def is_infrastructure_error(exc):
     )
 
 
+def save_evaluation_report(
+    results,
+    skipped_cases,
+    errors,
+    total,
+    output_path=None,
+):
+    """Save evaluation results and summary statistics to JSON."""
+
+    passed = sum(result["passed"] for result in results)
+    failed = sum(not result["passed"] for result in results)
+    completed = len(results)
+
+    report = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "summary": {
+            "total_cases": total,
+            "completed": completed,
+            "passed": passed,
+            "failed": failed,
+            "skipped": len(skipped_cases),
+            "unexpected_errors": len(errors),
+            "pass_rate": (
+                round(passed / completed, 4)
+                if completed
+                else None
+            ),
+        },
+        "results": results,
+        "skipped_cases": skipped_cases,
+        "errors": errors,
+    }
+
+    if output_path is None:
+        report_dir = Path(__file__).parent / "reports"
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_path = report_dir / "latest_report.json"
+    else:
+        report_path = Path(output_path)
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with report_path.open("w", encoding="utf-8") as file:
+        json.dump(report, file, indent=4, ensure_ascii=False)
+
+    print(f"\nJSON report saved to: {report_path}")
+
+    return report
+
+
 def run_evaluation(limit=None):
     """Evaluate all cases or a limited number of cases."""
 
@@ -111,8 +166,8 @@ def run_evaluation(limit=None):
     )
 
     results = []
-    skipped = 0
-    errors = 0
+    skipped_cases = []
+    error_details = []
 
     for case in cases:
         print(f"\nEvaluating: {case.name}")
@@ -131,14 +186,22 @@ def run_evaluation(limit=None):
             print(f"Suggestions present: {result['suggestions_found']}")
 
         except Exception as exc:
+            error_record = {
+                "name": case.name,
+                "error_type": type(exc).__name__,
+                "message": str(exc),
+            }
+
             if is_infrastructure_error(exc):
-                skipped += 1
+                skipped_cases.append(error_record)
+
                 print(
                     "SKIPPED — Provider unavailable or quota exceeded: "
                     f"{type(exc).__name__}"
                 )
             else:
-                errors += 1
+                error_details.append(error_record)
+
                 print(
                     f"ERROR — Unexpected failure: "
                     f"{type(exc).__name__}: {exc}"
@@ -147,22 +210,30 @@ def run_evaluation(limit=None):
     passed = sum(result["passed"] for result in results)
     failed = sum(not result["passed"] for result in results)
     completed = len(results)
-    total = len(cases)
 
     print("\n========== EVALUATION SUMMARY ==========")
+    print(f"Total cases: {len(cases)}")
+    print(f"Completed evaluations: {completed}")
     print(f"Passed: {passed}")
     print(f"Failed: {failed}")
-    print(f"Skipped: {skipped}")
-    print(f"Unexpected errors: {errors}")
-    print(f"Completed evaluations: {completed}/{total}")
+    print(f"Skipped: {len(skipped_cases)}")
+    print(f"Unexpected errors: {len(error_details)}")
 
     if completed:
         print(f"Pass rate: {passed / completed:.1%}")
     else:
-        print("Pass rate: N/A — no evaluations completed")
+        print("Pass rate: N/A — no cases completed")
 
     print("========================================")
 
+    # Save the report even if the provider quota is exhausted.
+    save_evaluation_report(
+        results=results,
+        skipped_cases=skipped_cases,
+        errors=error_details,
+        total=len(cases),
+    )
+
 
 if __name__ == "__main__":
-    run_evaluation(limit=1)
+    run_evaluation()

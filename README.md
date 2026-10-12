@@ -253,10 +253,20 @@ The project is under active development. The backend code-analysis pipeline, str
 - Use `.env.example` only for placeholder configuration.
 - Review generated AI suggestions before applying them to important code.
 
+
 ## Team
 
-Developed as a university group project exploring generative AI, prompt engineering, backend development, and AI-assisted programming education.
+| Team Member | Responsibilities |
+|---|---|
+
+| **Syed Wasia Ali Shah** | AI integration, backend development, LangChain pipelines, and API implementation.
+| **Eszter Kun** | Frontend development and implementation of the user interface. |
+| **Alexandra** | UI/UX design, wireframes, user flows, and visual design. |
+| **Salahuddin** | Code review, workflow design, and coordination of the application's development process. |
+ |
+
+
 
 ## License
 
-A license has not yet been selected. Until one is added, do not assume that the repository grants permission to redistribute or reuse its contents.
+This project is licensed under the MIT License.

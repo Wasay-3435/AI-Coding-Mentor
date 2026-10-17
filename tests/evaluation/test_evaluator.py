@@ -1,13 +1,10 @@
 
 import unittest
-from unittest.mock import patch
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from tests.evaluation import run_evaluation
-from backend.app.models.code import (
-    CodeAnalysisResponse,
-    CodeIssue,
-)
+from tests.evaluation.code_analysis_cases import EVALUATION_CASES
 
 
 class TestEvaluator(unittest.TestCase):
@@ -18,18 +15,20 @@ class TestEvaluator(unittest.TestCase):
             language="python",
             code="print(x)",
             expected_issue_type="Runtime Error",
-            expected_keywords=["NameError", "x", "defined"],
+            expected_keywords=["x", "NameError"],
+            expected_behavior=(
+                "Identify that x is referenced before it has been defined."
+            ),
         )
 
-        self.good_response = CodeAnalysisResponse(
-            summary="The code references an undefined variable.",
+        self.good_response = SimpleNamespace(
+            summary="Variable x is not defined, causing a NameError.",
             issues=[
-                CodeIssue(
+                SimpleNamespace(
                     type="Runtime Error",
                     severity="High",
                     explanation=(
-                        "Variable x is not defined, "
-                        "which causes a NameError."
+                        "The variable x is used before it has been defined."
                     ),
                 )
             ],
@@ -43,27 +42,29 @@ class TestEvaluator(unittest.TestCase):
         result = run_evaluation.evaluate_case(self.case)
 
         self.assertTrue(result["passed"])
+        self.assertTrue(result["issues_found"])
         self.assertTrue(result["type_found"])
         self.assertTrue(result["keyword_found"])
+        self.assertTrue(result["diagnostic_found"])
         self.assertTrue(result["explanation_found"])
         self.assertTrue(result["suggestions_found"])
-        mock_chain.invoke.assert_called_once()
 
     @patch("tests.evaluation.run_evaluation.code_analysis_chain")
     def test_wrong_issue_type_fails(self, mock_chain):
-        wrong_response = CodeAnalysisResponse(
-            summary="The code has a syntax problem.",
+        response = SimpleNamespace(
+            summary=self.good_response.summary,
             issues=[
-                CodeIssue(
+                SimpleNamespace(
                     type="Syntax Error",
                     severity="High",
-                    explanation="The code cannot be parsed.",
+                    explanation=(
+                        "Variable x is undefined, causing a NameError."
+                    ),
                 )
             ],
-            suggestions=["Check the syntax."],
+            suggestions=["Define x first."],
         )
-
-        mock_chain.invoke.return_value = wrong_response
+        mock_chain.invoke.return_value = response
 
         result = run_evaluation.evaluate_case(self.case)
 
@@ -72,32 +73,24 @@ class TestEvaluator(unittest.TestCase):
 
     @patch("tests.evaluation.run_evaluation.code_analysis_chain")
     def test_missing_suggestions_fails(self, mock_chain):
-        response_without_suggestions = CodeAnalysisResponse(
-            summary="An undefined variable is referenced.",
-            issues=[
-                CodeIssue(
-                    type="Runtime Error",
-                    severity="High",
-                    explanation="Variable x is undefined.",
-                )
-            ],
+        response = SimpleNamespace(
+            summary=self.good_response.summary,
+            issues=self.good_response.issues,
             suggestions=[],
         )
-
-        mock_chain.invoke.return_value = response_without_suggestions
+        mock_chain.invoke.return_value = response
 
         result = run_evaluation.evaluate_case(self.case)
 
         self.assertFalse(result["passed"])
         self.assertFalse(result["suggestions_found"])
-        
-        
+
     @patch("tests.evaluation.run_evaluation.code_analysis_chain")
     def test_missing_issues_fails(self, mock_chain):
-        response = CodeAnalysisResponse(
-            summary="No issues were identified.",
+        response = SimpleNamespace(
+            summary=self.good_response.summary,
             issues=[],
-            suggestions=["Review the code manually."],
+            suggestions=["Define x first."],
         )
         mock_chain.invoke.return_value = response
 
@@ -105,19 +98,20 @@ class TestEvaluator(unittest.TestCase):
 
         self.assertFalse(result["passed"])
         self.assertFalse(result["issues_found"])
+        self.assertFalse(result["type_found"])
 
     @patch("tests.evaluation.run_evaluation.code_analysis_chain")
     def test_insufficient_keywords_fails(self, mock_chain):
-        response = CodeAnalysisResponse(
-            summary="There may be a problem.",
+        response = SimpleNamespace(
+            summary="A variable is used.",
             issues=[
-                CodeIssue(
+                SimpleNamespace(
                     type="Runtime Error",
                     severity="High",
-                    explanation="Variable x has a problem.",
+                    explanation="The variable is used before definition.",
                 )
             ],
-            suggestions=["Check the variable."],
+            suggestions=["Define the variable first."],
         )
         mock_chain.invoke.return_value = response
 
@@ -128,16 +122,16 @@ class TestEvaluator(unittest.TestCase):
 
     @patch("tests.evaluation.run_evaluation.code_analysis_chain")
     def test_empty_explanation_fails(self, mock_chain):
-        response = CodeAnalysisResponse(
-            summary="An undefined variable was detected.",
+        response = SimpleNamespace(
+            summary=self.good_response.summary,
             issues=[
-                CodeIssue(
+                SimpleNamespace(
                     type="Runtime Error",
                     severity="High",
                     explanation="   ",
                 )
             ],
-            suggestions=["Define x before using it."],
+            suggestions=["Define x first."],
         )
         mock_chain.invoke.return_value = response
 
@@ -146,6 +140,40 @@ class TestEvaluator(unittest.TestCase):
         self.assertFalse(result["passed"])
         self.assertFalse(result["explanation_found"])
 
+    def test_undefined_variable_diagnostic(self):
+        result = run_evaluation.diagnostic_content_check(
+            self.case,
+            "Variable x is not defined, causing a NameError.",
+        )
 
-if __name__ == "__main__":
-    unittest.main()
+        self.assertTrue(result["passed"])
+
+    def test_list_index_diagnostic(self):
+        case = next(
+            item
+            for item in EVALUATION_CASES
+            if item.name == "List index out of range"
+        )
+
+        result = run_evaluation.diagnostic_content_check(
+            case,
+            "Index 5 is outside the valid range for this list, "
+            "causing IndexError.",
+        )
+
+        self.assertTrue(result["passed"])
+
+    def test_list_index_diagnostic_rejects_missing_index(self):
+        case = next(
+            item
+            for item in EVALUATION_CASES
+            if item.name == "List index out of range"
+        )
+
+        result = run_evaluation.diagnostic_content_check(
+            case,
+            "The list access causes an IndexError because "
+            "the index is invalid.",
+        )
+
+        self.assertFalse(result["passed"])

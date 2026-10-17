@@ -1,5 +1,5 @@
 {
-    "timestamp": "2026-10-17T11:39:34.255974+00:00",
+    "timestamp": "2026-10-17T18:02:11.564117+00:00",
     "summary": {
         "total_cases": 5,
         "completed": 5,
@@ -15,73 +15,119 @@
             "passed": true,
             "issues_found": true,
             "type_found": true,
+            "expected_issue_type": "Runtime Error",
+            "returned_issue_types": [
+                "Runtime Error"
+            ],
             "keyword_found": true,
             "matched_keywords": [
-                "x",
-                "NameError"
+                "NameError",
+                "x"
             ],
+            "diagnostic_found": true,
+            "diagnostic_checks": {
+                "mentions_variable_x": true,
+                "identifies_undefined_variable": true
+            },
+            "expected_behavior": "Identify that x is referenced before it has been defined in the current scope.",
             "explanation_found": true,
             "suggestions_found": true,
-            "summary": "The program attempts to display the value of the variable 'x', but 'x' has not been defined in the scope."
+            "summary": "The program attempts to display the value of variable x, but x has not been initialized or assigned any value."
         },
         {
             "name": "List index out of range",
             "passed": true,
             "issues_found": true,
             "type_found": true,
+            "expected_issue_type": "Runtime Error",
+            "returned_issue_types": [
+                "Runtime Error"
+            ],
             "keyword_found": true,
             "matched_keywords": [
                 "IndexError",
-                "index",
-                "list"
+                "index"
             ],
+            "diagnostic_found": true,
+            "diagnostic_checks": {
+                "mentions_invalid_index": true,
+                "identifies_out_of_range_access": true
+            },
+            "expected_behavior": "Explain that valid indices are 0, 1, and 2, so index 5 is outside the list.",
             "explanation_found": true,
             "suggestions_found": true,
-            "summary": "The program attempts to access an element at an index that does not exist in the list, causing an IndexError."
+            "summary": "The code attempts to access an index that is outside the bounds of the list, leading to an IndexError."
         },
         {
             "name": "Division by zero",
             "passed": true,
             "issues_found": true,
             "type_found": true,
+            "expected_issue_type": "Runtime Error",
+            "returned_issue_types": [
+                "Runtime Error"
+            ],
             "keyword_found": true,
             "matched_keywords": [
                 "ZeroDivisionError",
                 "zero"
             ],
+            "diagnostic_found": true,
+            "diagnostic_checks": {
+                "identifies_division_by_zero": true
+            },
+            "expected_behavior": "Identify division by zero as the cause of the runtime error.",
             "explanation_found": true,
             "suggestions_found": true,
-            "summary": "The code attempts to perform division by zero, which leads to an immediate runtime crash."
+            "summary": "The code attempts to divide a number by zero, which causes a fatal runtime exception in Python."
         },
         {
             "name": "Syntax error",
             "passed": true,
             "issues_found": true,
             "type_found": true,
+            "expected_issue_type": "Syntax Error",
+            "returned_issue_types": [
+                "Syntax Error",
+                "Runtime Error"
+            ],
             "keyword_found": true,
             "matched_keywords": [
                 "syntax",
-                "colon",
-                ":"
+                "colon"
             ],
+            "diagnostic_found": true,
+            "diagnostic_checks": {
+                "identifies_missing_colon": true
+            },
+            "expected_behavior": "Identify the missing colon after the if condition. The syntax error prevents execution before runtime behavior such as an undefined x can be evaluated.",
             "explanation_found": true,
             "suggestions_found": true,
-            "summary": "The code attempts to conditionally print the value of variable x if it is greater than 5, but it fails due to a missing colon in the if statement syntax and references an undefined variable."
+            "summary": "The code attempts to check if variable x is greater than 5 and print it, but contains a syntax error and an undefined variable error."
         },
         {
             "name": "Potential logical error",
             "passed": true,
             "issues_found": true,
             "type_found": true,
+            "expected_issue_type": "Logical Error",
+            "returned_issue_types": [
+                "Logical Error"
+            ],
             "keyword_found": true,
             "matched_keywords": [
                 "subtract",
-                "add",
-                "addition"
+                "add"
             ],
+            "diagnostic_found": true,
+            "diagnostic_checks": {
+                "identifies_subtraction": true,
+                "recognizes_addition_expectation": true
+            },
+            "expected_behavior": "Explain that the function subtracts rather than adds. Treat this as a likely mismatch with the function name, not definitive proof of programmer intent.",
             "explanation_found": true,
             "suggestions_found": true,
-            "summary": "The function is syntactically valid and runs without crashing, but it contains a logical error where it subtracts the arguments instead of adding them."
+            "summary": "The function defines an addition operation by name, but performs subtraction in its body."
         }
     ],
     "skipped_cases": [],

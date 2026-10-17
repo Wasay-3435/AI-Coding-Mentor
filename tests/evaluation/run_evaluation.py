@@ -8,88 +8,207 @@ from tests.evaluation.code_analysis_cases import EVALUATION_CASES
 
 
 INFRASTRUCTURE_ERROR_MARKERS = (
-    "503",
-    "UNAVAILABLE",
     "429",
-    "RESOURCE_EXHAUSTED",
+    "503",
+    "resource_exhausted",
+    "unavailable",
+    "rate limit",
+    "quota",
     "timeout",
     "timed out",
+    "connection error",
 )
+
+
+def normalize_text(value):
+    """Normalize text for case-insensitive matching."""
+    return " ".join(str(value).lower().split())
+
+
+def diagnostic_content_check(case, diagnostic_text):
+    """Check case-specific facts in a model response."""
+    text = normalize_text(diagnostic_text)
+
+    if case.name == "Undefined variable":
+        checks = {
+            "mentions_variable_x": "x" in text,
+            "identifies_undefined_variable": any(
+                phrase in text
+                for phrase in (
+                    "not defined",
+                    "undefined",
+                    "has not been defined",
+                    "hasn't been defined",
+                    "not been declared",
+                    "nameerror",
+                    "before it is defined",
+                    "before being defined",
+                )
+            ),
+        }
+
+    elif case.name == "List index out of range":
+        checks = {
+            "mentions_invalid_index": "5" in text or "five" in text,
+            "identifies_out_of_range_access": any(
+                phrase in text
+                for phrase in (
+                    "out of range",
+                    "out of bounds",
+                    "does not exist",
+                    "doesn't exist",
+                    "invalid index",
+                    "indexerror",
+                    "outside the valid range",
+                    "outside the bounds",
+                    "valid indices",
+                )
+            ),
+        }
+
+    elif case.name == "Division by zero":
+        checks = {
+            "identifies_division_by_zero": (
+                "zero" in text
+                and any(
+                    phrase in text
+                    for phrase in (
+                        "division",
+                        "divide",
+                        "zerodivisionerror",
+                        "dividing",
+                    )
+                )
+            ),
+        }
+
+    elif case.name == "Syntax error":
+        checks = {
+            "identifies_missing_colon": (
+                "colon" in text
+                and any(
+                    phrase in text
+                    for phrase in (
+                        "missing",
+                        "forgot",
+                        "expected",
+                        "require",
+                        "add a colon",
+                        "needs a colon",
+                        "should have a colon",
+                    )
+                )
+            ),
+        }
+
+    elif case.name == "Potential logical error":
+        checks = {
+            "identifies_subtraction": any(
+                phrase in text
+                for phrase in (
+                    "subtract",
+                    "subtraction",
+                    "minus",
+                    "a - b",
+                    "a-b",
+                )
+            ),
+            "recognizes_addition_expectation": any(
+                phrase in text
+                for phrase in (
+                    "addition",
+                    "add the arguments",
+                    "add the numbers",
+                    "sum of",
+                    "instead of adding",
+                    "rather than adding",
+                    "expected to add",
+                    "should add",
+                )
+            ),
+        }
+
+    else:
+        return {
+            "passed": False,
+            "checks": {"known_test_case": False},
+        }
+
+    return {
+        "passed": bool(checks) and all(checks.values()),
+        "checks": checks,
+    }
 
 
 def evaluate_case(case):
     """Run one case and evaluate the structured AI response."""
-
     result = code_analysis_chain.invoke({
         "language": case.language,
         "code": case.code,
     })
 
-    # Check whether the model returned any issues.
-    issues_found = len(result.issues) > 0
+    issues = result.issues
+    issues_found = len(issues) > 0
 
-    # Check whether the expected issue category was returned.
     issue_types = [
-        issue.type.strip().lower()
-        for issue in result.issues
+        normalize_text(issue.type)
+        for issue in issues
     ]
+    expected_type = normalize_text(case.expected_issue_type)
+    type_found = expected_type in issue_types
 
-    expected_type = case.expected_issue_type.strip().lower()
-
-    type_found = any(
-        expected_type == issue_type
-        for issue_type in issue_types
-    )
-
-    # Collect explanations and suggestions for keyword matching.
     diagnostic_text = " ".join(
-        [issue.explanation for issue in result.issues]
+        [result.summary]
+        + [issue.explanation for issue in issues]
         + result.suggestions
-    ).lower()
+    )
+    normalized_text = normalize_text(diagnostic_text)
 
+    expected_keywords = getattr(case, "expected_keywords", [])
     matched_keywords = [
         keyword
-        for keyword in case.expected_keywords
-        if keyword.lower() in diagnostic_text
+        for keyword in expected_keywords
+        if normalize_text(keyword) in normalized_text
     ]
 
-    required_keyword_count = min(
-        2,
-        len(case.expected_keywords),
-    )
+    required_keyword_count = min(2, len(expected_keywords))
+    keyword_found = len(matched_keywords) >= required_keyword_count
 
-    keyword_found = (
-        len(matched_keywords) >= required_keyword_count
-    )
+    diagnostic_check = diagnostic_content_check(case, diagnostic_text)
+    diagnostic_found = diagnostic_check["passed"]
 
-    # Check that at least one issue has a non-empty explanation.
     explanation_found = any(
         issue.explanation.strip()
-        for issue in result.issues
+        for issue in issues
     )
-
-    # Check that at least one non-empty suggestion exists.
     suggestions_found = any(
-        suggestion.strip()
+        isinstance(suggestion, str) and suggestion.strip()
         for suggestion in result.suggestions
     )
 
-    # All required checks must pass.
-    passed = (
-        issues_found
-        and type_found
-        and keyword_found
-        and explanation_found
-        and suggestions_found
-    )
+    passed = all((
+        issues_found,
+        type_found,
+        keyword_found,
+        diagnostic_found,
+        explanation_found,
+        suggestions_found,
+    ))
 
     return {
         "name": case.name,
         "passed": passed,
         "issues_found": issues_found,
         "type_found": type_found,
+        "expected_issue_type": case.expected_issue_type,
+        "returned_issue_types": [
+            issue.type for issue in issues
+        ],
         "keyword_found": keyword_found,
         "matched_keywords": matched_keywords,
+        "diagnostic_found": diagnostic_found,
+        "diagnostic_checks": diagnostic_check["checks"],
+        "expected_behavior": getattr(case, "expected_behavior", ""),
         "explanation_found": explanation_found,
         "suggestions_found": suggestions_found,
         "summary": result.summary,
@@ -98,11 +217,9 @@ def evaluate_case(case):
 
 def is_infrastructure_error(exc):
     """Identify common provider availability and quota errors."""
-
     message = str(exc).lower()
-
     return any(
-        marker.lower() in message
+        marker in message
         for marker in INFRASTRUCTURE_ERROR_MARKERS
     )
 
@@ -115,7 +232,6 @@ def save_evaluation_report(
     output_path=None,
 ):
     """Save evaluation results and summary statistics to JSON."""
-
     passed = sum(result["passed"] for result in results)
     failed = sum(not result["passed"] for result in results)
     completed = len(results)
@@ -129,11 +245,7 @@ def save_evaluation_report(
             "failed": failed,
             "skipped": len(skipped_cases),
             "unexpected_errors": len(errors),
-            "pass_rate": (
-                round(passed / completed, 4)
-                if completed
-                else None
-            ),
+            "pass_rate": round(passed / completed, 4) if completed else None,
         },
         "results": results,
         "skipped_cases": skipped_cases,
@@ -152,19 +264,15 @@ def save_evaluation_report(
         json.dump(report, file, indent=4, ensure_ascii=False)
 
     print(f"\nJSON report saved to: {report_path}")
-
     return report
 
 
 def run_evaluation(limit=None):
     """Evaluate all cases or a limited number of cases."""
+    if limit is not None and limit < 0:
+        raise ValueError("limit must be zero or a positive integer")
 
-    cases = (
-        EVALUATION_CASES[:limit]
-        if limit is not None
-        else EVALUATION_CASES
-    )
-
+    cases = EVALUATION_CASES[:limit] if limit is not None else EVALUATION_CASES
     results = []
     skipped_cases = []
     error_details = []
@@ -182,6 +290,8 @@ def run_evaluation(limit=None):
             print(f"Correct issue type: {result['type_found']}")
             print(f"Expected keywords found: {result['keyword_found']}")
             print(f"Matched keywords: {result['matched_keywords']}")
+            print(f"Diagnostic checks passed: {result['diagnostic_found']}")
+            print(f"Diagnostic check details: {result['diagnostic_checks']}")
             print(f"Explanation present: {result['explanation_found']}")
             print(f"Suggestions present: {result['suggestions_found']}")
 
@@ -194,17 +304,14 @@ def run_evaluation(limit=None):
 
             if is_infrastructure_error(exc):
                 skipped_cases.append(error_record)
-
                 print(
-                    "SKIPPED — Provider unavailable or quota exceeded: "
+                    "SKIPPED — Possible provider or network issue: "
                     f"{type(exc).__name__}"
                 )
             else:
                 error_details.append(error_record)
-
                 print(
-                    f"ERROR — Unexpected failure: "
-                    f"{type(exc).__name__}: {exc}"
+                    f"ERROR — Unexpected failure: {type(exc).__name__}: {exc}"
                 )
 
     passed = sum(result["passed"] for result in results)
@@ -218,15 +325,9 @@ def run_evaluation(limit=None):
     print(f"Failed: {failed}")
     print(f"Skipped: {len(skipped_cases)}")
     print(f"Unexpected errors: {len(error_details)}")
-
-    if completed:
-        print(f"Pass rate: {passed / completed:.1%}")
-    else:
-        print("Pass rate: N/A — no cases completed")
-
+    print(f"Pass rate: {passed / completed:.1%}" if completed else "Pass rate: N/A")
     print("========================================")
 
-    # Save the report even if the provider quota is exhausted.
     save_evaluation_report(
         results=results,
         skipped_cases=skipped_cases,

@@ -1,9 +1,9 @@
 {
-    "timestamp": "2026-10-17T18:02:11.564117+00:00",
+    "timestamp": "2026-10-17T18:59:50.217824+00:00",
     "summary": {
-        "total_cases": 5,
-        "completed": 5,
-        "passed": 5,
+        "total_cases": 10,
+        "completed": 10,
+        "passed": 10,
         "failed": 0,
         "skipped": 0,
         "unexpected_errors": 0,
@@ -32,7 +32,7 @@
             "expected_behavior": "Identify that x is referenced before it has been defined in the current scope.",
             "explanation_found": true,
             "suggestions_found": true,
-            "summary": "The program attempts to display the value of variable x, but x has not been initialized or assigned any value."
+            "summary": "The program attempts to display the value of variable x, but x has not been declared or assigned a value beforehand."
         },
         {
             "name": "List index out of range",
@@ -56,7 +56,7 @@
             "expected_behavior": "Explain that valid indices are 0, 1, and 2, so index 5 is outside the list.",
             "explanation_found": true,
             "suggestions_found": true,
-            "summary": "The code attempts to access an index that is outside the bounds of the list, leading to an IndexError."
+            "summary": "The code attempts to access an element at an index that does not exist in the list, resulting in a runtime IndexError."
         },
         {
             "name": "Division by zero",
@@ -79,7 +79,7 @@
             "expected_behavior": "Identify division by zero as the cause of the runtime error.",
             "explanation_found": true,
             "suggestions_found": true,
-            "summary": "The code attempts to divide a number by zero, which causes a fatal runtime exception in Python."
+            "summary": "The code attempts to divide a number by zero, which triggers an immediate runtime exception in Python."
         },
         {
             "name": "Syntax error",
@@ -103,7 +103,7 @@
             "expected_behavior": "Identify the missing colon after the if condition. The syntax error prevents execution before runtime behavior such as an undefined x can be evaluated.",
             "explanation_found": true,
             "suggestions_found": true,
-            "summary": "The code attempts to check if variable x is greater than 5 and print it, but contains a syntax error and an undefined variable error."
+            "summary": "The code attempts to conditionally print variable x if its value exceeds 5, but it contains a syntax error in the conditional statement and references an undefined variable."
         },
         {
             "name": "Potential logical error",
@@ -127,7 +127,128 @@
             "expected_behavior": "Explain that the function subtracts rather than adds. Treat this as a likely mismatch with the function name, not definitive proof of programmer intent.",
             "explanation_found": true,
             "suggestions_found": true,
-            "summary": "The function defines an addition operation by name, but performs subtraction in its body."
+            "summary": "The function contains a logical error where subtraction is performed instead of addition."
+        },
+        {
+            "name": "Type mismatch",
+            "passed": true,
+            "issues_found": true,
+            "type_found": true,
+            "expected_issue_type": "Runtime Error",
+            "returned_issue_types": [
+                "Runtime Error"
+            ],
+            "keyword_found": true,
+            "matched_keywords": [
+                "TypeError",
+                "string"
+            ],
+            "diagnostic_found": true,
+            "diagnostic_checks": {
+                "identifies_type_error": true,
+                "identifies_string_integer_mismatch": true
+            },
+            "expected_behavior": "Explain that Python cannot add a string and an integer using the plus operator in this context.",
+            "explanation_found": true,
+            "suggestions_found": true,
+            "summary": "The program attempts to perform arithmetic addition between a string variable and an integer, which causes a runtime type error in Python."
+        },
+        {
+            "name": "Missing function argument",
+            "passed": true,
+            "issues_found": true,
+            "type_found": true,
+            "expected_issue_type": "Runtime Error",
+            "returned_issue_types": [
+                "Runtime Error"
+            ],
+            "keyword_found": true,
+            "matched_keywords": [
+                "TypeError",
+                "argument"
+            ],
+            "diagnostic_found": true,
+            "diagnostic_checks": {
+                "identifies_missing_argument": true,
+                "identifies_function_call_error": true
+            },
+            "expected_behavior": "Identify that greet requires the name argument but is called without the required argument.",
+            "explanation_found": true,
+            "suggestions_found": true,
+            "summary": "The function 'greet' is defined with one required parameter, but it is called without providing any arguments, leading to a runtime error."
+        },
+        {
+            "name": "Empty list access",
+            "passed": true,
+            "issues_found": true,
+            "type_found": true,
+            "expected_issue_type": "Runtime Error",
+            "returned_issue_types": [
+                "Runtime Error"
+            ],
+            "keyword_found": true,
+            "matched_keywords": [
+                "IndexError",
+                "empty"
+            ],
+            "diagnostic_found": true,
+            "diagnostic_checks": {
+                "identifies_empty_list": true,
+                "identifies_invalid_index": true
+            },
+            "expected_behavior": "Explain that the list is empty and has no valid index 0.",
+            "explanation_found": true,
+            "suggestions_found": true,
+            "summary": "The program initializes an empty list and immediately tries to access its first element, resulting in an IndexError."
+        },
+        {
+            "name": "Missing return statement",
+            "passed": true,
+            "issues_found": true,
+            "type_found": true,
+            "expected_issue_type": "Logical Error",
+            "returned_issue_types": [
+                "Logical Error"
+            ],
+            "keyword_found": true,
+            "matched_keywords": [
+                "return",
+                "None"
+            ],
+            "diagnostic_found": true,
+            "diagnostic_checks": {
+                "identifies_missing_return": true,
+                "identifies_none_result": true
+            },
+            "expected_behavior": "Explain that calculate_total computes price + tax but does not return the result, so the function call evaluates to None.",
+            "explanation_found": true,
+            "suggestions_found": true,
+            "summary": "The function calculates the sum of price and tax, but does not return the result, causing it to return None."
+        },
+        {
+            "name": "Invalid integer conversion",
+            "passed": true,
+            "issues_found": true,
+            "type_found": true,
+            "expected_issue_type": "Runtime Error",
+            "returned_issue_types": [
+                "Runtime Error"
+            ],
+            "keyword_found": true,
+            "matched_keywords": [
+                "ValueError",
+                "integer"
+            ],
+            "diagnostic_found": true,
+            "diagnostic_checks": {
+                "identifies_value_error": true,
+                "identifies_invalid_integer_conversion": true,
+                "identifies_invalid_input": true
+            },
+            "expected_behavior": "Identify that the string hello is not a valid integer representation and int() raises ValueError.",
+            "explanation_found": true,
+            "suggestions_found": true,
+            "summary": "The code attempts to convert a non-numeric string into an integer, which leads to a runtime exception when executed."
         }
     ],
     "skipped_cases": [],

@@ -128,6 +128,101 @@ def diagnostic_content_check(case, diagnostic_text):
             ),
         }
 
+    elif case.name == "Type mismatch":
+        checks = {
+            "identifies_type_error": "typeerror" in text or "type error" in text,
+            "identifies_string_integer_mismatch": (
+                "string" in text
+                and ("integer" in text or "int" in text)
+                and any(
+                    phrase in text
+                    for phrase in (
+                        "cannot add",
+                        "can't add",
+                        "unsupported operand",
+                        "incompatible",
+                        "between",
+                        "concatenate",
+                    )
+                )
+            ),
+        }
+
+    elif case.name == "Missing function argument":
+        checks = {
+            "identifies_missing_argument": any(
+                phrase in text
+                for phrase in (
+                    "missing",
+                    "required argument",
+                    "required positional argument",
+                    "without the argument",
+                    "no argument",
+                    "expects an argument",
+                )
+            ),
+            "identifies_function_call_error": (
+                "typeerror" in text
+                or "type error" in text
+                or "argument" in text
+            ),
+        }
+
+    elif case.name == "Empty list access":
+        checks = {
+            "identifies_empty_list": "empty" in text or "no elements" in text,
+            "identifies_invalid_index": (
+                "indexerror" in text
+                or "index" in text
+                or "out of range" in text
+            ),
+        }
+
+    elif case.name == "Missing return statement":
+        checks = {
+            "identifies_missing_return": (
+                "return" in text
+                and any(
+                    phrase in text
+                    for phrase in (
+                        "does not return",
+                        "doesn't return",
+                        "no return",
+                        "without returning",
+                        "missing return",
+                        "not returned",
+                        "implicitly returns",
+                    )
+                )
+            ),
+            "identifies_none_result": (
+                "none" in text
+                or "no value" in text
+                or "no result" in text
+            ),
+        }
+
+    elif case.name == "Invalid integer conversion":
+        checks = {
+            "identifies_value_error": (
+                "valueerror" in text or "value error" in text
+            ),
+            "identifies_invalid_integer_conversion": (
+                "int(" in text
+                or "integer" in text
+                or "convert" in text
+                or "conversion" in text
+                or "parse" in text
+            ),
+            "identifies_invalid_input": (
+                "hello" in text
+                or "not a valid" in text
+                or "invalid literal" in text
+                or "cannot convert" in text
+                or "can't convert" in text
+            ),
+        }
+
     else:
         return {
             "passed": False,
@@ -178,7 +273,7 @@ def evaluate_case(case):
     diagnostic_found = diagnostic_check["passed"]
 
     explanation_found = any(
-        issue.explanation.strip()
+        isinstance(issue.explanation, str) and issue.explanation.strip()
         for issue in issues
     )
     suggestions_found = any(
@@ -305,13 +400,13 @@ def run_evaluation(limit=None):
             if is_infrastructure_error(exc):
                 skipped_cases.append(error_record)
                 print(
-                    "SKIPPED — Possible provider or network issue: "
+                    "SKIPPED - Possible provider or network issue: "
                     f"{type(exc).__name__}"
                 )
             else:
                 error_details.append(error_record)
                 print(
-                    f"ERROR — Unexpected failure: {type(exc).__name__}: {exc}"
+                    f"ERROR - Unexpected failure: {type(exc).__name__}: {exc}"
                 )
 
     passed = sum(result["passed"] for result in results)

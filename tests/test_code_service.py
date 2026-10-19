@@ -2,10 +2,13 @@
 import unittest
 from unittest.mock import patch
 
+from pydantic import ValidationError
+from langchain_core.exceptions import OutputParserException
+from langchain_google_genai.chat_models import GoogleRateLimitError
+
 from backend.app.models.code import CodeRequest
 from backend.app.services.code_service import analyze_code
-from backend.app.utils.exceptions import AIServiceError
-from langchain_google_genai.chat_models import GoogleRateLimitError
+from backend.app.utils.exceptions import AIServiceError, AIResponseError
 
 
 class TestAnalyzeCode(unittest.TestCase):
@@ -43,6 +46,33 @@ class TestAnalyzeCode(unittest.TestCase):
             analyze_code(self.request)
 
         self.assertIn("temporarily busy", str(context.exception))
+        self.assertIs(context.exception.__cause__, original_error)
+
+    @patch("backend.app.services.code_service.code_analysis_chain")
+    def test_validation_error_raises_ai_response_error(self, mock_chain):
+        original_error = ValidationError.from_exception_data(
+            "CodeAnalysisResponse",
+            [],
+        )
+        mock_chain.invoke.side_effect = original_error
+
+        with self.assertRaises(AIResponseError) as context:
+            analyze_code(self.request)
+
+        self.assertIn("invalid response", str(context.exception).lower())
+        self.assertIs(context.exception.__cause__, original_error)
+
+    @patch("backend.app.services.code_service.code_analysis_chain")
+    def test_output_parser_error_raises_ai_response_error(self, mock_chain):
+        original_error = OutputParserException(
+            "Unable to parse AI output"
+        )
+        mock_chain.invoke.side_effect = original_error
+
+        with self.assertRaises(AIResponseError) as context:
+            analyze_code(self.request)
+
+        self.assertIn("invalid response", str(context.exception).lower())
         self.assertIs(context.exception.__cause__, original_error)
 
     @patch("backend.app.services.code_service.code_analysis_chain")

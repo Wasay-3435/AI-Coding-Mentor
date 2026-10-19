@@ -1,6 +1,8 @@
 
 import logging
 
+from pydantic import ValidationError
+from langchain_core.exceptions import OutputParserException
 from langchain_google_genai.chat_models import (
     GoogleAPIError,
     GoogleAuthenticationError,
@@ -13,7 +15,7 @@ from langchain_google_genai.chat_models import (
 
 from backend.app.models.code import CodeRequest
 from backend.app.chains.code_analysis_chain import code_analysis_chain
-from backend.app.utils.exceptions import AIServiceError
+from backend.app.utils.exceptions import AIServiceError, AIResponseError
 
 
 logger = logging.getLogger(__name__)
@@ -27,6 +29,15 @@ def analyze_code(request: CodeRequest):
                 "code": request.code,
             }
         )
+
+    except (ValidationError, OutputParserException) as exc:
+        logger.warning(
+            "AI response failed structured-output validation",
+            exc_info=True,
+        )
+        raise AIResponseError(
+            "The AI returned an invalid response. Please try again."
+        ) from exc
 
     except GoogleRateLimitError as exc:
         logger.warning("AI provider rate limit reached")

@@ -260,7 +260,7 @@ The project is under active development. The backend code-analysis pipeline, str
 |---|---|---|
 | **Syed Wasia Ali Shah** | AI & Backend Developer | AI integration, backend development, LangChain pipelines, API implementation |
 | **Eszter Kun** | Frontend Developer | Frontend development, implementation of the user interface |
-| **Alexandra** | UI/UX Designer | Wireframes, user flows, visual design |
+| **Alexandra** | UI/UX Designer | Wireframes, user flows, visual design | Code review
 | **Salahuddin** | Code Review & Workflow Lead | Code review, workflow design, coordination of the development process |
 
 

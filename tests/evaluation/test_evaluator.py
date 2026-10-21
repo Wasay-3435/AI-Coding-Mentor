@@ -149,6 +149,46 @@ class TestEvaluator(unittest.TestCase):
 
         self.assertTrue(result["passed"])
 
+    def test_syntax_error_accepts_missing_colon_without_runtime_claim(self):
+        case = next(
+            item
+            for item in EVALUATION_CASES
+            if item.name == "Syntax error"
+        )
+
+        result = run_evaluation.diagnostic_content_check(
+            case,
+            "Syntax error: the if condition is missing a colon.",
+        )
+
+        self.assertTrue(result["passed"])
+        self.assertTrue(result["checks"]["identifies_missing_colon"])
+        self.assertTrue(
+            result["checks"]["does_not_claim_undefined_x_runtime_error"]
+        )
+
+    def test_syntax_error_rejects_unsupported_undefined_variable_claim(self):
+        case = next(
+            item
+            for item in EVALUATION_CASES
+            if item.name == "Syntax error"
+        )
+
+        result = run_evaluation.diagnostic_content_check(
+            case,
+            (
+                "The if condition is missing a colon. "
+                "The syntax error prevents execution. "
+                "The program also raises a NameError because x is undefined."
+            ),
+        )
+
+        self.assertFalse(result["passed"])
+        self.assertTrue(result["checks"]["identifies_missing_colon"])
+        self.assertFalse(
+            result["checks"]["does_not_claim_undefined_x_runtime_error"]
+        )
+
     def test_list_index_diagnostic(self):
         case = next(
             item

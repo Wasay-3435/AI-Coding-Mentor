@@ -25,9 +25,12 @@ def normalize_text(value):
     return " ".join(str(value).lower().split())
 
 
-def diagnostic_content_check(case, diagnostic_text):
+def diagnostic_content_check(case, diagnostic_text, summary=None):
     """Check case-specific facts in a model response."""
     text = normalize_text(diagnostic_text)
+    summary_text = normalize_text(
+        summary if summary is not None else diagnostic_text
+    )
 
     if case.name == "Undefined variable":
         checks = {
@@ -97,6 +100,20 @@ def diagnostic_content_check(case, diagnostic_text):
                         "needs a colon",
                         "should have a colon",
                     )
+                )
+            ),
+            # Check the summary separately. Suggestions may discuss
+            # hypothetical issues after the syntax error is fixed.
+            "does_not_claim_undefined_x_runtime_error": not any(
+                phrase in summary_text
+                for phrase in (
+                    "nameerror",
+                    "undefined variable",
+                    "variable x is not defined",
+                    "variable x is undefined",
+                    "x is not defined",
+                    "x is undefined",
+                    "x has not been defined",
                 )
             ),
         }
@@ -270,7 +287,6 @@ def evaluate_case(case):
         if normalize_text(keyword) in normalized_text
     ]
 
-    # Require every configured keyword to be present.
     required_keyword_count = len(expected_keywords)
     keyword_found = (
         len(matched_keywords) == required_keyword_count
@@ -279,6 +295,7 @@ def evaluate_case(case):
     diagnostic_check = diagnostic_content_check(
         case,
         diagnostic_text,
+        summary=result.summary,
     )
     diagnostic_found = diagnostic_check["passed"]
 

@@ -300,5 +300,125 @@ class TestEvaluator(unittest.TestCase):
         self.assertTrue(result["passed"])
 
 
+    def test_off_by_one_loop_diagnostic(self):
+        case = next(
+            item for item in EVALUATION_CASES
+            if item.name == "Off-by-one loop"
+        )
+
+        result = run_evaluation.diagnostic_content_check(
+            case,
+            (
+                "range(1, 10) excludes 10. "
+                "Use range(1, 11) to include 10."
+            ),
+        )
+
+        self.assertTrue(result["passed"])
+
+    def test_off_by_one_loop_rejects_missing_correction(self):
+        case = next(
+            item for item in EVALUATION_CASES
+            if item.name == "Off-by-one loop"
+        )
+
+        result = run_evaluation.diagnostic_content_check(
+            case,
+            "range excludes 10 from the output.",
+        )
+
+        self.assertFalse(result["passed"])
+
+    def test_incorrect_comparison_diagnostic(self):
+        case = next(
+            item for item in EVALUATION_CASES
+            if item.name == "Incorrect comparison"
+        )
+
+        result = run_evaluation.diagnostic_content_check(
+            case,
+            (
+                "The comparison age > 18 excludes people aged exactly 18. "
+                "Use age >= 18 to include them."
+            ),
+        )
+
+        self.assertTrue(result["passed"])
+
+    def test_incorrect_comparison_rejects_missing_correction(self):
+        case = next(
+            item for item in EVALUATION_CASES
+            if item.name == "Incorrect comparison"
+        )
+
+        result = run_evaluation.diagnostic_content_check(
+            case,
+            "The comparison age > 18 excludes people aged exactly 18.",
+        )
+
+        self.assertFalse(result["passed"])
+
+    def test_mutable_default_argument_diagnostic(self):
+        case = next(
+            item for item in EVALUATION_CASES
+            if item.name == "Mutable default argument"
+        )
+
+        result = run_evaluation.diagnostic_content_check(
+            case,
+            (
+                "The mutable default argument uses the same list across "
+                "calls. Use None as the default and create a new list "
+                "inside the function."
+            ),
+        )
+
+        self.assertTrue(result["passed"])
+
+    def test_mutable_default_argument_rejects_missing_fix(self):
+        case = next(
+            item for item in EVALUATION_CASES
+            if item.name == "Mutable default argument"
+        )
+
+        result = run_evaluation.diagnostic_content_check(
+            case,
+            (
+                "The mutable default argument shares the same list "
+                "across calls."
+            ),
+        )
+
+        self.assertFalse(result["passed"])
+
+    def test_unreachable_code_diagnostic(self):
+        case = next(
+            item for item in EVALUATION_CASES
+            if item.name == "Unreachable code"
+        )
+
+        result = run_evaluation.diagnostic_content_check(
+            case,
+            (
+                "The print statement is unreachable because the return "
+                "statement executes before it."
+            ),
+        )
+
+        self.assertTrue(result["passed"])
+
+    def test_unreachable_code_rejects_missing_return_connection(self):
+        case = next(
+            item for item in EVALUATION_CASES
+            if item.name == "Unreachable code"
+        )
+
+        result = run_evaluation.diagnostic_content_check(
+            case,
+            "The print statement is unreachable.",
+        )
+
+        self.assertFalse(result["passed"])
+
 if __name__ == "__main__":
     unittest.main()

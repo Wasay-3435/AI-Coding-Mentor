@@ -102,8 +102,9 @@ def diagnostic_content_check(case, diagnostic_text, summary=None):
                     )
                 )
             ),
-            # Check the summary separately. Suggestions may discuss
-            # hypothetical issues after the syntax error is fixed.
+            # Suggestions may discuss hypothetical issues after the
+            # syntax error is fixed. Check unsupported runtime claims
+            # against the summary separately.
             "does_not_claim_undefined_x_runtime_error": not any(
                 phrase in summary_text
                 for phrase in (
@@ -244,6 +245,117 @@ def diagnostic_content_check(case, diagnostic_text, summary=None):
             ),
         }
 
+    elif case.name == "Off-by-one loop":
+        checks = {
+            "identifies_exclusive_range_endpoint": (
+                "range" in text
+                and any(
+                    phrase in text
+                    for phrase in (
+                        "excludes 10",
+                        "exclude 10",
+                        "does not include 10",
+                        "doesn't include 10",
+                        "not include 10",
+                        "stops before 10",
+                        "stop before 10",
+                        "upper bound is exclusive",
+                        "exclusive upper bound",
+                    )
+                )
+            ),
+            "suggests_correct_endpoint": (
+                "range(1, 11)" in text
+                or "range(1,11)" in text
+                or "range(1, 10 + 1)" in text
+                or "range(1,10 + 1)" in text
+            ),
+        }
+
+    elif case.name == "Incorrect comparison":
+        checks = {
+            "identifies_boundary_condition": (
+                "18" in text
+                and any(
+                    phrase in text
+                    for phrase in (
+                        "greater than",
+                        "strictly greater",
+                        "exactly 18",
+                        "age 18",
+                        "equal to 18",
+                        "includes 18",
+                        "exclude people aged 18",
+                        "not include people aged 18",
+                    )
+                )
+            ),
+            "suggests_inclusive_comparison": (
+                ">= " in text
+                or ">=18" in text
+                or "greater than or equal" in text
+                or "greater than or equal to" in text
+            ),
+        }
+
+    elif case.name == "Mutable default argument":
+        checks = {
+            "identifies_shared_mutable_default": (
+                "mutable" in text
+                and any(
+                    phrase in text
+                    for phrase in (
+                        "default argument",
+                        "default list",
+                        "shared list",
+                        "same list",
+                        "reused across calls",
+                        "reused between calls",
+                        "persists between calls",
+                        "created once",
+                        "shared mutable",
+                    )
+                )
+            ),
+            "suggests_safe_default": (
+                "none" in text
+                and (
+                    "default" in text
+                    or "list" in text
+                )
+            ),
+        }
+
+    elif case.name == "Unreachable code":
+        checks = {
+            "identifies_unreachable_statement": any(
+                phrase in text
+                for phrase in (
+                    "unreachable",
+                    "never execute",
+                    "never run",
+                    "will not execute",
+                    "won't execute",
+                    "cannot be reached",
+                    "can't be reached",
+                )
+            ),
+            "connects_return_to_unreachable_code": (
+                "return" in text
+                and any(
+                    phrase in text
+                    for phrase in (
+                        "before",
+                        "after",
+                        "following",
+                        "subsequent",
+                        "immediately",
+                        "early return",
+                    )
+                )
+            ),
+        }
+
     else:
         return {
             "passed": False,
@@ -374,6 +486,11 @@ def save_evaluation_report(
                 if completed
                 else None
             ),
+            "completion_rate": (
+                round(completed / total, 4)
+                if total
+                else None
+            ),
         },
         "results": results,
         "skipped_cases": skipped_cases,
@@ -471,6 +588,11 @@ def run_evaluation(limit=None):
         f"Pass rate: {passed / completed:.1%}"
         if completed
         else "Pass rate: N/A"
+    )
+    print(
+        f"Completion rate: {completed / len(cases):.1%}"
+        if cases
+        else "Completion rate: N/A"
     )
     print("========================================")
 

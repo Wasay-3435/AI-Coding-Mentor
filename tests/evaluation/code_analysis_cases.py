@@ -132,4 +132,72 @@ EVALUATION_CASES = [
             "representation and int() raises ValueError."
         ),
     ),
+    CodeAnalysisCase(
+        name="Off-by-one loop",
+        language="python",
+        code=(
+            "# Requirement: print every integer from 1 through 10.\n"
+            "for i in range(1, 10):\n"
+            "    print(i)"
+        ),
+        expected_issue_type="Logical Error",
+        expected_keywords=["range", "10"],
+        expected_behavior=(
+            "Explain that range(1, 10) excludes 10, so the code does not "
+            "meet the explicit requirement to print through 10. "
+            "Suggest range(1, 11)."
+        ),
+    ),
+    CodeAnalysisCase(
+        name="Incorrect comparison",
+        language="python",
+        code=(
+            "# Requirement: adults are people aged 18 or older.\n"
+            'age = 18\n'
+            'if age > 18:\n'
+            '    print("Adult")\n'
+            "else:\n"
+            '    print("Not adult")'
+        ),
+        expected_issue_type="Logical Error",
+        expected_keywords=["18", "greater than"],
+        expected_behavior=(
+            "Explain that age > 18 excludes people aged exactly 18, "
+            "contradicting the requirement. Suggest age >= 18."
+        ),
+    ),
+    CodeAnalysisCase(
+        name="Mutable default argument",
+        language="python",
+        code=(
+            "def add_item(item, items=[]):\n"
+            "    items.append(item)\n"
+            "    return items\n"
+            "first = add_item('apple')\n"
+            "second = add_item('banana')"
+        ),
+        expected_issue_type="Logical Error",
+        expected_keywords=["mutable", "default"],
+        expected_behavior=(
+            "Explain that the default list is created once and reused "
+            "across calls, so the second result includes items from the "
+            "first call. Suggest using None as the default and creating "
+            "a new list inside the function."
+        ),
+    ),
+    CodeAnalysisCase(
+        name="Unreachable code",
+        language="python",
+        code=(
+            "def calculate():\n"
+            "    return 5\n"
+            "    print('This will not execute')"
+        ),
+        expected_issue_type="Logical Error",
+        expected_keywords=["return", "unreachable"],
+        expected_behavior=(
+            "Identify that the print statement is unreachable because "
+            "the function returns before reaching it."
+        ),
+    ),
 ]

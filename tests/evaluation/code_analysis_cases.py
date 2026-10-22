@@ -69,4 +69,67 @@ EVALUATION_CASES = [
             "not definitive proof of programmer intent."
         ),
     ),
+    CodeAnalysisCase(
+        name="Type mismatch",
+        language="python",
+        code='age = "twenty"\nprint(age + 5)',
+        expected_issue_type="Runtime Error",
+        expected_keywords=["TypeError", "string"],
+        expected_behavior=(
+            "Explain that Python cannot add a string and an integer "
+            "using the plus operator in this context."
+        ),
+    ),
+    CodeAnalysisCase(
+        name="Missing function argument",
+        language="python",
+        code=(
+            "def greet(name):\n"
+            '    print(f"Hello, {name}")\n'
+            "greet()"
+        ),
+        expected_issue_type="Runtime Error",
+        expected_keywords=["TypeError", "argument"],
+        expected_behavior=(
+            "Identify that greet requires the name argument but is called "
+            "without the required argument."
+        ),
+    ),
+    CodeAnalysisCase(
+        name="Empty list access",
+        language="python",
+        code="items = []\nprint(items[0])",
+        expected_issue_type="Runtime Error",
+        expected_keywords=["IndexError", "empty"],
+        expected_behavior=(
+            "Explain that the list is empty and has no valid index 0."
+        ),
+    ),
+    CodeAnalysisCase(
+        name="Missing return statement",
+        language="python",
+        code=(
+            "def calculate_total(price, tax):\n"
+            "    price + tax\n"
+            "result = calculate_total(10, 2)\n"
+            "print(result)"
+        ),
+        expected_issue_type="Logical Error",
+        expected_keywords=["return", "None"],
+        expected_behavior=(
+            "Explain that calculate_total computes price + tax but does "
+            "not return the result, so the function call evaluates to None."
+        ),
+    ),
+    CodeAnalysisCase(
+        name="Invalid integer conversion",
+        language="python",
+        code='number = int("hello")',
+        expected_issue_type="Runtime Error",
+        expected_keywords=["ValueError", "integer"],
+        expected_behavior=(
+            "Identify that the string hello is not a valid integer "
+            "representation and int() raises ValueError."
+        ),
+    ),
 ]

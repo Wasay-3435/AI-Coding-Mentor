@@ -25,9 +25,12 @@ def normalize_text(value):
     return " ".join(str(value).lower().split())
 
 
-def diagnostic_content_check(case, diagnostic_text):
+def diagnostic_content_check(case, diagnostic_text, summary=None):
     """Check case-specific facts in a model response."""
     text = normalize_text(diagnostic_text)
+    summary_text = normalize_text(
+        summary if summary is not None else diagnostic_text
+    )
 
     if case.name == "Undefined variable":
         checks = {
@@ -99,6 +102,21 @@ def diagnostic_content_check(case, diagnostic_text):
                     )
                 )
             ),
+            # Suggestions may discuss hypothetical issues after the
+            # syntax error is fixed. Check unsupported runtime claims
+            # against the summary separately.
+            "does_not_claim_undefined_x_runtime_error": not any(
+                phrase in summary_text
+                for phrase in (
+                    "nameerror",
+                    "undefined variable",
+                    "variable x is not defined",
+                    "variable x is undefined",
+                    "x is not defined",
+                    "x is undefined",
+                    "x has not been defined",
+                )
+            ),
         }
 
     elif case.name == "Potential logical error":
@@ -124,6 +142,216 @@ def diagnostic_content_check(case, diagnostic_text):
                     "rather than adding",
                     "expected to add",
                     "should add",
+                )
+            ),
+        }
+
+    elif case.name == "Type mismatch":
+        checks = {
+            "identifies_type_error": (
+                "typeerror" in text or "type error" in text
+            ),
+            "identifies_string_integer_mismatch": (
+                "string" in text
+                and ("integer" in text or "int" in text)
+                and any(
+                    phrase in text
+                    for phrase in (
+                        "cannot add",
+                        "can't add",
+                        "unsupported operand",
+                        "incompatible",
+                        "between",
+                        "concatenate",
+                    )
+                )
+            ),
+        }
+
+    elif case.name == "Missing function argument":
+        checks = {
+            "identifies_missing_argument": any(
+                phrase in text
+                for phrase in (
+                    "missing",
+                    "required argument",
+                    "required positional argument",
+                    "without the argument",
+                    "no argument",
+                    "expects an argument",
+                )
+            ),
+            "identifies_function_call_error": (
+                "typeerror" in text
+                or "type error" in text
+                or "argument" in text
+            ),
+        }
+
+    elif case.name == "Empty list access":
+        checks = {
+            "identifies_empty_list": (
+                "empty" in text or "no elements" in text
+            ),
+            "identifies_invalid_index": (
+                "indexerror" in text
+                or "index" in text
+                or "out of range" in text
+            ),
+        }
+
+    elif case.name == "Missing return statement":
+        checks = {
+            "identifies_missing_return": (
+                "return" in text
+                and any(
+                    phrase in text
+                    for phrase in (
+                        "does not return",
+                        "doesn't return",
+                        "no return",
+                        "without returning",
+                        "missing return",
+                        "not returned",
+                        "implicitly returns",
+                    )
+                )
+            ),
+            "identifies_none_result": (
+                "none" in text
+                or "no value" in text
+                or "no result" in text
+            ),
+        }
+
+    elif case.name == "Invalid integer conversion":
+        checks = {
+            "identifies_value_error": (
+                "valueerror" in text or "value error" in text
+            ),
+            "identifies_invalid_integer_conversion": (
+                "int(" in text
+                or "integer" in text
+                or "convert" in text
+                or "conversion" in text
+                or "parse" in text
+            ),
+            "identifies_invalid_input": (
+                "hello" in text
+                or "not a valid" in text
+                or "invalid literal" in text
+                or "cannot convert" in text
+                or "can't convert" in text
+            ),
+        }
+
+    elif case.name == "Off-by-one loop":
+        checks = {
+            "identifies_exclusive_range_endpoint": (
+                "range" in text
+                and any(
+                    phrase in text
+                    for phrase in (
+                        "excludes 10",
+                        "exclude 10",
+                        "does not include 10",
+                        "doesn't include 10",
+                        "not include 10",
+                        "stops before 10",
+                        "stop before 10",
+                        "upper bound is exclusive",
+                        "exclusive upper bound",
+                    )
+                )
+            ),
+            "suggests_correct_endpoint": (
+                "range(1, 11)" in text
+                or "range(1,11)" in text
+                or "range(1, 10 + 1)" in text
+                or "range(1,10 + 1)" in text
+            ),
+        }
+
+    elif case.name == "Incorrect comparison":
+        checks = {
+            "identifies_boundary_condition": (
+                "18" in text
+                and any(
+                    phrase in text
+                    for phrase in (
+                        "greater than",
+                        "strictly greater",
+                        "exactly 18",
+                        "age 18",
+                        "equal to 18",
+                        "includes 18",
+                        "exclude people aged 18",
+                        "not include people aged 18",
+                    )
+                )
+            ),
+            "suggests_inclusive_comparison": (
+                ">= " in text
+                or ">=18" in text
+                or "greater than or equal" in text
+                or "greater than or equal to" in text
+            ),
+        }
+
+    elif case.name == "Mutable default argument":
+        checks = {
+            "identifies_shared_mutable_default": (
+                "mutable" in text
+                and any(
+                    phrase in text
+                    for phrase in (
+                        "default argument",
+                        "default list",
+                        "shared list",
+                        "same list",
+                        "reused across calls",
+                        "reused between calls",
+                        "persists between calls",
+                        "created once",
+                        "shared mutable",
+                    )
+                )
+            ),
+            "suggests_safe_default": (
+                "none" in text
+                and (
+                    "default" in text
+                    or "list" in text
+                )
+            ),
+        }
+
+    elif case.name == "Unreachable code":
+        checks = {
+            "identifies_unreachable_statement": any(
+                phrase in text
+                for phrase in (
+                    "unreachable",
+                    "never execute",
+                    "never run",
+                    "will not execute",
+                    "won't execute",
+                    "cannot be reached",
+                    "can't be reached",
+                )
+            ),
+            "connects_return_to_unreachable_code": (
+                "return" in text
+                and any(
+                    phrase in text
+                    for phrase in (
+                        "before",
+                        "after",
+                        "following",
+                        "subsequent",
+                        "immediately",
+                        "early return",
+                    )
                 )
             ),
         }
@@ -171,14 +399,21 @@ def evaluate_case(case):
         if normalize_text(keyword) in normalized_text
     ]
 
-    required_keyword_count = min(2, len(expected_keywords))
-    keyword_found = len(matched_keywords) >= required_keyword_count
+    required_keyword_count = len(expected_keywords)
+    keyword_found = (
+        len(matched_keywords) == required_keyword_count
+    )
 
-    diagnostic_check = diagnostic_content_check(case, diagnostic_text)
+    diagnostic_check = diagnostic_content_check(
+        case,
+        diagnostic_text,
+        summary=result.summary,
+    )
     diagnostic_found = diagnostic_check["passed"]
 
     explanation_found = any(
-        issue.explanation.strip()
+        isinstance(issue.explanation, str)
+        and issue.explanation.strip()
         for issue in issues
     )
     suggestions_found = any(
@@ -206,6 +441,7 @@ def evaluate_case(case):
         ],
         "keyword_found": keyword_found,
         "matched_keywords": matched_keywords,
+        "required_keyword_count": required_keyword_count,
         "diagnostic_found": diagnostic_found,
         "diagnostic_checks": diagnostic_check["checks"],
         "expected_behavior": getattr(case, "expected_behavior", ""),
@@ -245,7 +481,16 @@ def save_evaluation_report(
             "failed": failed,
             "skipped": len(skipped_cases),
             "unexpected_errors": len(errors),
-            "pass_rate": round(passed / completed, 4) if completed else None,
+            "pass_rate": (
+                round(passed / completed, 4)
+                if completed
+                else None
+            ),
+            "completion_rate": (
+                round(completed / total, 4)
+                if total
+                else None
+            ),
         },
         "results": results,
         "skipped_cases": skipped_cases,
@@ -270,9 +515,16 @@ def save_evaluation_report(
 def run_evaluation(limit=None):
     """Evaluate all cases or a limited number of cases."""
     if limit is not None and limit < 0:
-        raise ValueError("limit must be zero or a positive integer")
+        raise ValueError(
+            "limit must be zero or a positive integer"
+        )
 
-    cases = EVALUATION_CASES[:limit] if limit is not None else EVALUATION_CASES
+    cases = (
+        EVALUATION_CASES[:limit]
+        if limit is not None
+        else EVALUATION_CASES
+    )
+
     results = []
     skipped_cases = []
     error_details = []
@@ -290,8 +542,14 @@ def run_evaluation(limit=None):
             print(f"Correct issue type: {result['type_found']}")
             print(f"Expected keywords found: {result['keyword_found']}")
             print(f"Matched keywords: {result['matched_keywords']}")
-            print(f"Diagnostic checks passed: {result['diagnostic_found']}")
-            print(f"Diagnostic check details: {result['diagnostic_checks']}")
+            print(
+                "Diagnostic checks passed: "
+                f"{result['diagnostic_found']}"
+            )
+            print(
+                "Diagnostic check details: "
+                f"{result['diagnostic_checks']}"
+            )
             print(f"Explanation present: {result['explanation_found']}")
             print(f"Suggestions present: {result['suggestions_found']}")
 
@@ -305,13 +563,14 @@ def run_evaluation(limit=None):
             if is_infrastructure_error(exc):
                 skipped_cases.append(error_record)
                 print(
-                    "SKIPPED — Possible provider or network issue: "
+                    "SKIPPED - Possible provider or network issue: "
                     f"{type(exc).__name__}"
                 )
             else:
                 error_details.append(error_record)
                 print(
-                    f"ERROR — Unexpected failure: {type(exc).__name__}: {exc}"
+                    f"ERROR - Unexpected failure: "
+                    f"{type(exc).__name__}: {exc}"
                 )
 
     passed = sum(result["passed"] for result in results)
@@ -325,7 +584,16 @@ def run_evaluation(limit=None):
     print(f"Failed: {failed}")
     print(f"Skipped: {len(skipped_cases)}")
     print(f"Unexpected errors: {len(error_details)}")
-    print(f"Pass rate: {passed / completed:.1%}" if completed else "Pass rate: N/A")
+    print(
+        f"Pass rate: {passed / completed:.1%}"
+        if completed
+        else "Pass rate: N/A"
+    )
+    print(
+        f"Completion rate: {completed / len(cases):.1%}"
+        if cases
+        else "Completion rate: N/A"
+    )
     print("========================================")
 
     save_evaluation_report(

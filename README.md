@@ -256,12 +256,15 @@ The project is under active development. The backend code-analysis pipeline, str
 
 ## Team
 
-| Team Member | Role | Key Contributions |
-|---|---|---|
-| **Syed Wasia Ali Shah** | AI & Backend Developer | AI integration, backend development, LangChain pipelines, API implementation |
-| **Eszter Kun** | Frontend Developer | Frontend development, implementation of the user interface |
-| **Alexandra** | UI/UX Designer | Wireframes, user flows, visual design | Code review
-| **Salahuddin** | Code Review & Workflow Lead | Code review, workflow design, coordination of the development process |
+| Team Member | Responsibilities |
+|---|---|
+
+| **Syed Wasia Ali Shah** | AI integration, backend development, LangChain pipelines, and API implementation.
+| **Eszter Kun** | Frontend development and implementation of the user interface. |
+| **Alexandra** | UI/UX design, wireframes, user flows, and visual design. |
+| **Salahuddin** | Code review, workflow design, and coordination of the application's development process. |
+ |
+
 
 
 ## License

@@ -1,9 +1,10 @@
 
+from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from backend.app.models.code import CodeAnalysisResponse, CodeRequest
+from backend.app.models.code import CodeAnalysisResponse
 
 
 class ExerciseGenerationRequest(BaseModel):
@@ -11,6 +12,7 @@ class ExerciseGenerationRequest(BaseModel):
     code: str
     analysis: CodeAnalysisResponse
     count: int = Field(default=3, ge=1, le=5)
+    session_id: str | None = None
 
     @field_validator("language", "code")
     @classmethod
@@ -28,11 +30,7 @@ class PracticeExercise(BaseModel):
     starter_code: str
     expected_skills: list[str]
 
-    @field_validator(
-        "title",
-        "concept",
-        "instructions",
-    )
+    @field_validator("title", "concept", "instructions")
     @classmethod
     def reject_blank_text(cls, value: str) -> str:
         if not value.strip():
@@ -49,6 +47,7 @@ class PracticeExercise(BaseModel):
 
 class ExerciseGenerationResponse(BaseModel):
     exercises: list[PracticeExercise]
+    session_id: str | None = None
 
     @field_validator("exercises")
     @classmethod
@@ -65,6 +64,7 @@ class ExerciseSubmissionRequest(BaseModel):
     exercise: PracticeExercise
     language: str
     answer: str
+    session_id: str | None = None
 
     @field_validator("language", "answer")
     @classmethod
@@ -89,3 +89,22 @@ class ExerciseEvaluationResponse(BaseModel):
         if not value.strip():
             raise ValueError("This field must not be empty.")
         return value
+
+
+class LearningSessionCreateResponse(BaseModel):
+    session_id: str
+    message: str
+
+
+class LearningSessionReportResponse(BaseModel):
+    session_id: str
+    started_at: datetime
+    completed_at: datetime
+    total_analyses: int = Field(ge=0)
+    total_exercises_generated: int = Field(ge=0)
+    total_exercises_attempted: int = Field(ge=0)
+    average_score: float = Field(ge=0, le=100)
+    correct_answers: int = Field(ge=0)
+    concepts_to_practice: list[str]
+    recommendations: list[str]
+    summary: str

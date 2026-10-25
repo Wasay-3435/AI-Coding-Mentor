@@ -5,6 +5,7 @@ from pydantic import BaseModel, field_validator
 class CodeRequest(BaseModel):
     language: str
     code: str
+    session_id: str | None = None
 
     @field_validator("language", "code")
     @classmethod

@@ -3,6 +3,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from backend.app.api.routes.code import router as code_router
+from backend.app.api.routes.learning import router as learning_router
 from backend.app.utils.exceptions import AIServiceError, AIResponseError
 
 
@@ -43,13 +44,17 @@ async def ai_response_error_handler(
 
 @app.get("/")
 def root():
-    return {
-        "message": "AI Coding Mentor API is running!"
-    }
+    return {"message": "AI Coding Mentor API is running!"}
 
 
 app.include_router(
     code_router,
     prefix="/api/v1",
     tags=["Code"],
+)
+
+app.include_router(
+    learning_router,
+    prefix="/api/v1",
+    tags=["Learning"],
 )

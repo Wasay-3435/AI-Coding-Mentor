@@ -1,5 +1,6 @@
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from backend.app.api.routes.code import router as code_router
@@ -11,6 +12,18 @@ app = FastAPI(
     title="AI Coding Mentor",
     description="AI-powered coding mentorship platform",
     version="0.1.0",
+)
+
+# Allow the React/Vite development server to call this API.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
